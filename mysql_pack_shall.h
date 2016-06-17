@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 #include <netinet/tcp.h>
 #include <netinet/ip.h>
 #include <sys/socket.h>
@@ -20,38 +21,47 @@ unsigned short port = DEA_PORT;
 
 enum enum_server_command
 {
-  COM_SLEEP, 
-  COM_QUIT, 
-  COM_INIT_DB, 
-  COM_QUERY, 
-  COM_FIELD_LIST,
-  COM_CREATE_DB, 
-  COM_DROP_DB, 
-  COM_REFRESH, 
-  COM_SHUTDOWN, 
-  COM_STATISTICS,
-  COM_PROCESS_INFO, 
-  COM_CONNECT, 
-  COM_PROCESS_KILL, 
-  COM_DEBUG, 
-  COM_PING,
-  COM_TIME, 
-  COM_DELAYED_INSERT, 
-  COM_CHANGE_USER, 
-  COM_BINLOG_DUMP,
-  COM_TABLE_DUMP,
-  COM_CONNECT_OUT, 
-  COM_REGISTER_SLAVE,
-  COM_STMT_PREPARE, 
-  COM_STMT_EXECUTE, 
-  COM_STMT_SEND_LONG_DATA, 
-  COM_STMT_CLOSE,
-  COM_STMT_RESET, 
-  COM_SET_OPTION, 
-  COM_STMT_FETCH, 
-  COM_DAEMON,
-  COM_END
+    COM_SLEEP, 
+    COM_QUIT, 
+    COM_INIT_DB, 
+    COM_QUERY, 
+    COM_FIELD_LIST,
+    COM_CREATE_DB, 
+    COM_DROP_DB, 
+    COM_REFRESH, 
+    COM_SHUTDOWN, 
+    COM_STATISTICS,
+    COM_PROCESS_INFO, 
+    COM_CONNECT, 
+    COM_PROCESS_KILL, 
+    COM_DEBUG, 
+    COM_PING,
+    COM_TIME, 
+    COM_DELAYED_INSERT, 
+    COM_CHANGE_USER, 
+    COM_BINLOG_DUMP,
+    COM_TABLE_DUMP,
+    COM_CONNECT_OUT, 
+    COM_REGISTER_SLAVE,
+    COM_STMT_PREPARE, 
+    COM_STMT_EXECUTE, 
+    COM_STMT_SEND_LONG_DATA, 
+    COM_STMT_CLOSE,
+    COM_STMT_RESET, 
+    COM_SET_OPTION, 
+    COM_STMT_FETCH, 
+    COM_DAEMON,
+    COM_END
 };
+
+enum cursor_flag {
+    CURSOR_TYPE_NO_CURSOR,
+    CURSOR_TYPE_READ_ONLY,
+    CURSOR_TYPE_FOR_UPDATE,
+    CURSOR_TYPE_SCROLLABLE
+};
+
+void handle_exec_statement(unsigned char *body);
 
 int check_argv(int argc, char *argv[]);
 
