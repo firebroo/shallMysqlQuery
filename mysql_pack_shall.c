@@ -46,8 +46,7 @@ handle_tcp_packet(unsigned char* buffer)
         if (packet_len < 0 || packet_len > BUFFER_SIZE) {
             return;
         }
-        memset(mysql_body, '\0', BUFFER_SIZE);
-        strncpy (mysql_body, buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len - 1);
+        memset(mysql_body,'\0', BUFFER_SIZE);
         //printf("%d\n", packet_len);
         switch (body[4]) {
             case COM_SLEEP:
@@ -58,18 +57,27 @@ handle_tcp_packet(unsigned char* buffer)
                 }
                 break;
             case COM_INIT_DB:
+                strncpy (mysql_body, buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len - 1);
                 printf("%-36s%s\n","mysql select db:", mysql_body);
                 break;
             case COM_QUERY:
+                strncpy (mysql_body, buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len - 1);
                 printf("%-36s%s\n", "mysql query:", mysql_body);
                 break;
-            case COM_FIELD_LIST:
-                break;
             case COM_CREATE_DB:
+                strncpy (mysql_body, buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len - 1);
                 printf("%-36s%s\n", "mysql create db:", mysql_body);
                 break;
             case COM_DROP_DB:
-                printf("%-36s%s\n","mysql delete db:", mysql_body);
+                strncpy (mysql_body, buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len - 1);
+                printf("%-36s%s","mysql delete db:", mysql_body);
+                break;
+            case COM_STMT_PREPARE:
+                printf("%-36s","mysql prepare statement:");
+                strncpy (mysql_body, buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len - 1);
+                printf("%s\n", mysql_body);
+                break;
+            case COM_FIELD_LIST:
                 break;
             case COM_REFRESH:
                 break;
@@ -104,9 +112,6 @@ handle_tcp_packet(unsigned char* buffer)
                 break;
             case COM_REGISTER_SLAVE:
                 break;
-            case COM_STMT_PREPARE:
-                printf("%-36s%s\n","mysql prepare statement:", mysql_body);
-                break;
             case COM_STMT_EXECUTE:
                 handle_exec_statement(buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE);
                 break;
@@ -118,7 +123,7 @@ handle_tcp_packet(unsigned char* buffer)
             case COM_STMT_RESET:
                 break;
             case COM_SET_OPTION:
-                printf("%-36s\n", "set option");
+                printf("%-36s\n", "mysql set option");
                 break;
             case COM_STMT_FETCH:
                 break;
@@ -169,8 +174,8 @@ check_argv(int argc, char *argv[]) {
 
 void
 handle_exec_statement(unsigned char *body) {
-    printf("%-36s\n", "mysql execute statement");
-    printf("statement id:\t%d\n", ((int *)body)[0]);
+    printf("%-36s", "mysql execute statement");
+    printf("statement id:\t%d\t", ((int *)body)[0]);
     switch (body[4]) {
         case CURSOR_TYPE_NO_CURSOR:
             printf("CURSOR_TYPE_NO_CURSOR\n");
@@ -223,13 +228,14 @@ main(int argc, char *argv[])
             return 1;
         }
         if(data_size > 0) {
-            if ((sockfd = fork()) < 0) {
-                perror("fork");
-                exit(-1);
-            }
-            if (sockfd == 0) {
-                process_packet(buffer);
-            }
+            //if ((sockfd = fork()) < 0) {
+            //    perror("fork");
+            //    exit(-1);
+            //}
+            //if (sockfd == 0) {
+            //    process_packet(buffer);
+            //}
+            process_packet(buffer);
         }
     }
 
