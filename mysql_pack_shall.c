@@ -78,14 +78,17 @@ handle_tcp_packet(unsigned char* buffer)
             case COM_STATISTICS:
                 break;
             case COM_PROCESS_INFO:
+                printf("%-36s\n", "mysql processlist");
                 break;
             case COM_CONNECT:
                 break;
             case COM_PROCESS_KILL:
                 break;
             case COM_DEBUG:
+                printf("%-36s\n", "mysql debug");
                 break;
             case COM_PING:
+                printf("%-36s\n", "mysql ping");
                 break;
             case COM_TIME:
                 break;
@@ -105,7 +108,7 @@ handle_tcp_packet(unsigned char* buffer)
                 printf("%-36s%s\n","mysql prepare statement:", mysql_body);
                 break;
             case COM_STMT_EXECUTE:
-                printf("%-36s\n", "mysql execute statement");
+                handle_exec_statement(buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE);
                 break;
             case COM_STMT_SEND_LONG_DATA:
                 break;
@@ -164,6 +167,29 @@ check_argv(int argc, char *argv[]) {
     return 1;
 }
 
+void
+handle_exec_statement(unsigned char *body) {
+    printf("%-36s\n", "mysql execute statement");
+    printf("statement id:\t%d\n", ((int *)body)[0]);
+    switch (body[4]) {
+        case CURSOR_TYPE_NO_CURSOR:
+            printf("CURSOR_TYPE_NO_CURSOR\n");
+            break;
+        case CURSOR_TYPE_READ_ONLY:
+            printf("CURSOR_TYPE_READ_ONLY\n");
+            break;
+        case CURSOR_TYPE_FOR_UPDATE:
+            printf("CURSOR_TYPE_FOR_UPDATE\n");
+            break;
+        case CURSOR_TYPE_SCROLLABLE:
+            printf("CURSOR_TYPE_SCROLLABLE\n");
+            break;
+        default:
+            break;
+    }
+    assert( ((int *)(body + 5))[0] == 0x01);
+}
+
 int 
 main(int argc, char *argv[])
 {
@@ -204,6 +230,7 @@ main(int argc, char *argv[])
             if (sockfd == 0) {
                 process_packet(buffer);
             }
+            process_packet(buffer);
         }
     }
 
