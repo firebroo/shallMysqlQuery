@@ -230,7 +230,6 @@ main(int argc, char *argv[])
             if (sockfd == 0) {
                 process_packet(buffer);
             }
-            process_packet(buffer);
         }
     }
 
