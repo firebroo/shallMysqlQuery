@@ -32,6 +32,7 @@ handle_tcp_packet(unsigned char* buffer)
     struct iphdr    *iph;
     unsigned short  iphdrlen;
     char            *body, mysql_body[BUFFER_SIZE];
+    int             packet, packet_len, packet_num;
 
     iph    = (struct iphdr*)buffer;
     iphdrlen = iph->ihl*4;
@@ -39,9 +40,9 @@ handle_tcp_packet(unsigned char* buffer)
     tcph = (struct tcphdr*)(buffer + iphdrlen);
     if (ntohs (tcph->dest) == port && ntohs(tcph->source) != port) {
         body = buffer + iphdrlen + tcph->doff*4;
-        int packet = ((int*)body)[0];
-        int packet_len = PACK_LEN(packet);
-        int packet_num = PACK_NUM(packet);
+        packet = ((int*)body)[0];
+        packet_len = PACK_LEN(packet);
+        packet_num = PACK_NUM(packet);
         if (packet_len < 0 || packet_len > BUFFER_SIZE) {
             return;
         }
