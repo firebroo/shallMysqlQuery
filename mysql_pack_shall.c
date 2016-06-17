@@ -37,9 +37,7 @@ handle_tcp_packet(unsigned char* buffer)
     iphdrlen = iph->ihl*4;
 
     tcph = (struct tcphdr*)(buffer + iphdrlen);
-    if (ntohs (tcph->dest) != port) {
-        /*skip handle send to other port tcp packet*/
-    } else {
+    if (ntohs (tcph->dest) == port && ntohs(tcph->source) != port) {
         body = buffer + iphdrlen + tcph->doff*4;
         int packet = ((int*)body)[0];
         int packet_len = PACK_LEN(packet);
@@ -47,7 +45,9 @@ handle_tcp_packet(unsigned char* buffer)
         if (packet_len < 0 || packet_len > BUFFER_SIZE) {
             return;
         }
+        memset(mysql_body, '\0', BUFFER_SIZE);
         strncpy (mysql_body, buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len - 1);
+        //printf("%d\n", packet_len);
         switch (body[4]) {
             case COM_SLEEP:
                 break;
@@ -166,7 +166,7 @@ check_argv(int argc, char *argv[]) {
 int 
 main(int argc, char *argv[])
 {
-    int             data_size;
+    int             sockfd, data_size;
     unsigned int    saddr_size; 
     struct sockaddr saddr;
     unsigned char   *buffer; 
@@ -196,7 +196,13 @@ main(int argc, char *argv[])
             return 1;
         }
         if(data_size > 0) {
-            process_packet(buffer);
+            if ((sockfd = fork()) < 0) {
+                perror("fork");
+                exit(-1);
+            }
+            if (sockfd == 0) {
+                process_packet(buffer);
+            }
         }
     }
 
