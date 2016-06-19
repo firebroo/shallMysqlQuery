@@ -1,22 +1,22 @@
-#include "mysql_pack_shall.h"	
+#include "mysql_pack_shall.h"
 
 
-void 
+void
 process_packet(unsigned char* buffer)
 {
     //Get the IP Header part of this packet
     struct iphdr *iph = (struct iphdr*)buffer;
     switch (iph->protocol) //Check the Protocol and do accordingly...
     {
-        case 1:  //ICMP Protocol
-        case 2:  //IGMP Protocol
+        case IPPROTO_ICMP:  //ICMP Protocol
+        case IPPROTO_IGMP:  //IGMP Protocol
             break;
 
-        case 6:  //TCP Protocol
+        case IPPROTO_TCP:  //TCP Protocol
             handle_tcp_packet(buffer);
             break;
 
-        case 17: //UDP Protocol
+        case IPPROTO_UDP: //UDP Protocol
             break;
 
         default: //Some Other Protocol like ARP etc.
@@ -25,7 +25,7 @@ process_packet(unsigned char* buffer)
     }
 }
 
-void 
+void
 handle_tcp_packet(unsigned char* buffer)
 {
     struct tcphdr   *tcph;
@@ -151,7 +151,7 @@ validate_port(char *p){
     return (unsigned short)port;
 }
 
-int 
+int
 check_argv(int argc, char *argv[]) {
     int    opt;
 
@@ -195,17 +195,17 @@ handle_exec_statement(unsigned char *body) {
     assert( ((int *)(body + 5))[0] == 0x01);
 }
 
-int 
+int
 main(int argc, char *argv[])
 {
     int             sockfd, data_size;
-    unsigned int    saddr_size; 
+    unsigned int    saddr_size;
     struct sockaddr saddr;
-    unsigned char   *buffer; 
+    unsigned char   *buffer;
 
     if (!check_argv(argc, argv)) {
         exit(-1);
-    } 
+    }
 
     buffer = (unsigned char *)malloc(BUFFER_SIZE); //Its Big!
 
