@@ -218,7 +218,9 @@ handle_tcp_packet(unsigned char* buffer)
                         ((int*)(body_protol_start_ptr))[0]);
                 break;
             case COM_SET_OPTION:
-                printf("%-36s\n", "mysql set option");
+                printf("%-36smulti_statement(%s)\n",
+                        "mysql set option: ",
+                        ((short*)body_protol_start_ptr)[0]? "OFF": "ON");
                 break;
             case COM_STMT_FETCH:
                 break;
