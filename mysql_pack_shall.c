@@ -367,46 +367,35 @@ handle_exec_statement(unsigned char *body, int pack_len)
 
     param_type_ptr = body + 9 + nullBit_len + 1;
     param_value_ptr = param_type_ptr + type_param_len;
-    param_type_last_ptr = param_value_ptr - 2;
 
     all_param_len = pack_len - (9 + nullBit_len + 1 + type_param_len);
 
-    for(j = 1; j <= all_param_len; j++) {
-        buffer_reserve[all_param_len - j] = *(param_value_ptr++);
-    }
-    buffer_reserve_ptr = buffer_reserve;
     /*reverse read param */
-    for(i = 1; i <= num_of_param; i++) {
-        param_type = (param_type_last_ptr)[0];
-        is_signed = (param_type_last_ptr)[1];
+    for(i = 0; i < num_of_param; i++) {
+        param_type = (param_type_ptr)[0];
+        is_signed = (param_type_ptr)[1];
         if (is_signed) {
-            printf("%-36s[%d] => (signed ", "",  num_of_param-i);
+            printf("%-36s[%d] => (signed ", "",  i);
         }else {
-            printf("%-36s[%d] => (unsigned ", "",  num_of_param-i);
+            printf("%-36s[%d] => (unsigned ", "",  i);
         }
         switch(param_type) {
             case FIELD_TYPE_LONGLONG:
-                printf("long value = %ld)\n", big2littlel((((long *)buffer_reserve_ptr)[0])));
-                buffer_reserve_ptr += 8;
+                printf("long value = %ld)\n", (((long *)param_value_ptr)[0]));
+                param_value_ptr += 8;
                 break;
             case FIELD_TYPE_VAR_STRING:
                 printf("var_string = ");
-                while (*buffer_reserve_ptr != ETX) {
-                    //another end of text;
-                    if (*buffer_reserve_ptr == 0x08) {
-                        break;
-                    }
-                    string_buffer[counter++] = *(buffer_reserve_ptr++);
+                for(j = 0; j < param_value_ptr[0]; j++) {
+                    printf("%c", (param_value_ptr + 1)[j]);
                 }
-                string_buffer[counter] = '\0';
-                string = revstr(string_buffer, strlen(string_buffer));
-                printf("%s)\n", string);
-                buffer_reserve_ptr++;
+                printf(")\n");
+                param_value_ptr += param_value_ptr[0] + 1;
                 break;
             default:
                 printf("unkonw type: %d\n", param_type);
         }
-        param_type_last_ptr -= 2;
+        param_type_ptr += 2;
     }
 
     num_of_param = -1;
