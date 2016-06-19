@@ -1,6 +1,8 @@
 #include "mysql_pack_shall.h"
 
 
+static short num_of_param = -1;
+
 void
 process_packet(unsigned char* buffer)
 {
@@ -25,6 +27,37 @@ process_packet(unsigned char* buffer)
     }
 }
 
+
+void
+handle_prepare_repose_pack(unsigned char* buffer) {
+    int     packet_len, packet_num, packet, statement_id;
+    short   num_of_fileds;
+
+    packet = ((int*)buffer)[0];
+    packet_len = PACK_LEN(packet);
+    packet_num = PACK_NUM(packet);
+
+    statement_id = ((int*)(buffer+5))[0];
+
+
+    num_of_fileds = ((short*)(buffer+9))[0];
+    num_of_param = ((short*)(buffer+9))[1];
+
+    /*
+    printf("packet len:%d\n"
+            "packet num: %d\n"
+            "statement_id: %d\n"
+            "num_of_fileds: %d\n"
+            "num_of_param: %d\n",
+            packet_len,
+            packet_num,
+            statement_id,
+            num_of_fileds,
+            num_of_param);
+            */
+}
+
+
 void
 handle_tcp_packet(unsigned char* buffer)
 {
@@ -33,11 +66,16 @@ handle_tcp_packet(unsigned char* buffer)
     unsigned short  iphdrlen;
     char            *body, mysql_body[BUFFER_SIZE];
     int             packet, packet_len, packet_num;
+    static char     last_is_pare = 0;
 
     iph    = (struct iphdr*)buffer;
     iphdrlen = iph->ihl*4;
 
     tcph = (struct tcphdr*)(buffer + iphdrlen);
+    if (last_is_pare == 1 && ntohs(tcph->source) == 3306) {
+        handle_prepare_repose_pack(buffer + iphdrlen + tcph->doff*4);
+        last_is_pare = 0;
+    }
     if (ntohs (tcph->dest) == port && ntohs(tcph->source) != port) {
         body = buffer + iphdrlen + tcph->doff*4;
         packet = ((int*)body)[0];
@@ -73,6 +111,7 @@ handle_tcp_packet(unsigned char* buffer)
                 printf("%-36s%s","mysql delete db:", mysql_body);
                 break;
             case COM_STMT_PREPARE:
+                last_is_pare = 1;
                 printf("%-36s","mysql prepare statement:");
                 strncpy (mysql_body, buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len - 1);
                 printf("%s\n", mysql_body);
@@ -113,7 +152,7 @@ handle_tcp_packet(unsigned char* buffer)
             case COM_REGISTER_SLAVE:
                 break;
             case COM_STMT_EXECUTE:
-                handle_exec_statement(buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE);
+                handle_exec_statement(buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len);
                 break;
             case COM_STMT_SEND_LONG_DATA:
                 break;
@@ -172,8 +211,37 @@ check_argv(int argc, char *argv[]) {
     return 1;
 }
 
+/*
+ * COM_STMT_EXECUTE
+ * execute a prepared statement
+ *
+ * direction: client -> server
+ * esponse: COM_STMT_EXECUTE Response
+ *
+ * payload:
+ *     [17] COM_STMT_EXECUTE
+ *     stmt-id
+ *     1              flags
+ *     4              iteration-count
+ *     if num-params > 0:
+ *     n              NULL-bitmap, length: (num-params+7)/8
+ *     1              new-params-bound-flag
+ *     if new-params-bound-flag == 1:
+ *     n              type of each parameter, length: num-params * 2
+ *     n              value of each parameter)]
+ */
+
 void
-handle_exec_statement(unsigned char *body) {
+handle_exec_statement(unsigned char *body, int pack_len) {
+    int             nullBit_len;
+    char            new_params_bound_flag;
+    int             type_param_len;
+    unsigned char   param_type, is_signed;
+    int             i, j;
+    unsigned char*  param_value_ptr,  *param_type_ptr;
+    int             all_param_len;
+    char            buffer_reserve[BUFFER_SIZE], *buffer_reserve_ptr;
+
     printf("%-36s", "mysql execute statement");
     printf("statement id:\t%d\t", ((int *)body)[0]);
     switch (body[4]) {
@@ -193,12 +261,64 @@ handle_exec_statement(unsigned char *body) {
             break;
     }
     assert( ((int *)(body + 5))[0] == 0x01);
+    if (num_of_param > 0){
+        nullBit_len = (num_of_param + 7) / 8;
+    }
+    else {
+        nullBit_len = 0;
+    }
+    new_params_bound_flag = (body + 9 + nullBit_len)[0];
+    if (new_params_bound_flag == 1) {
+        type_param_len = num_of_param * 2;
+    }else {
+        type_param_len = 0;
+    }
+
+    param_type_ptr = body + 9 + nullBit_len + 1;
+    param_value_ptr = param_type_ptr + type_param_len;
+
+    all_param_len = pack_len - (10 + nullBit_len + 1 + type_param_len);
+    for(j = 1; j <= all_param_len; j++) {
+        buffer_reserve[all_param_len - j] = *(param_value_ptr++);
+    }
+    buffer_reserve_ptr = buffer_reserve;
+    for(i = 1; i <= num_of_param; i++) {
+        param_type = (param_type_ptr)[0];
+        is_signed = (param_type_ptr)[1];
+        if (is_signed) {
+            printf("[%d] => (signed ", num_of_param-i);
+        }else {
+            printf("[%d] => (unsigned ", num_of_param-i);
+        }
+        switch(param_type) {
+            case FIELD_TYPE_LONGLONG:
+                printf("long value = %ld)\n", ((long *)buffer_reserve_ptr)[0]);
+                buffer_reserve_ptr += 8;
+                break;
+            case FIELD_TYPE_VAR_STRING:
+                printf("var_string = ");
+                while (*buffer_reserve_ptr != 0x03) {
+                    printf("%c", *(buffer_reserve_ptr++));
+                }
+                printf(")\n");
+                buffer_reserve_ptr++;
+                break;
+
+            case 0x04:
+                printf("int\n");
+            default:
+                printf("length is %d\n", param_type);
+        }
+        param_type_ptr += 2;
+    }
+
+    num_of_param = -1;
 }
 
 int
 main(int argc, char *argv[])
 {
-    int             sockfd, data_size;
+    int             data_size;
     unsigned int    saddr_size;
     struct sockaddr saddr;
     unsigned char   *buffer;
