@@ -220,6 +220,8 @@ main(int argc, char *argv[])
     saddr_size = sizeof(saddr);
     for( ; ; )
     {
+        memset(buffer, '\0', BUFFER_SIZE);
+
         /*Receive a packet*/
         data_size = recvfrom(sock_raw , buffer , BUFFER_SIZE , 0 , &saddr , &saddr_size);
         if(data_size < 0)
