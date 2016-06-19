@@ -27,9 +27,52 @@ process_packet(unsigned char* buffer)
     }
 }
 
+short big2littles(short num)
+{
+    return ((num & 0xFF00) >> 8)
+         | ((num & 0x00FF) << 8);
+}
+
+int big2littlei(int num)
+{
+    return ((num & 0xFF000000) >> 24)
+         | ((num & 0x000000FF) << 24)
+         | ((num & 0x00FF0000) >> 8)
+         | ((num & 0x0000FF00) << 8);
+}
+
+long big2littlel(long num)
+{
+    return ((num & 0xFF00000000000000) >> 56)
+         | ((num & 0x00000000000000FF) << 56)
+         | ((num & 0x00FF000000000000) >> 40)
+         | ((num & 0x000000000000FF00) << 40)
+         | ((num & 0x0000FF0000000000) >> 24)
+         | ((num & 0x0000000000FF0000) << 24)
+         | ((num & 0x000000FF00000000) >> 8)
+         | ((num & 0x00000000FF000000) << 8);
+}
+
+char *
+revstr(char *str, size_t len)
+{
+    char    *start = str;
+    char    *end = str + len - 1;
+    char    ch;
+
+    if (str != NULL){
+        while (start < end){
+            ch = *start;
+            *start++ = *end;
+            *end-- = ch;
+        }
+    }
+    return str;
+}
 
 void
-handle_prepare_repose_pack(unsigned char* buffer) {
+handle_prepare_repose_pack(unsigned char* buffer)
+{
     int     packet_len, packet_num, packet, statement_id;
     short   num_of_fileds;
 
@@ -178,8 +221,9 @@ handle_tcp_packet(unsigned char* buffer)
 }
 
 unsigned short
-validate_port(char *p){
-    int port = atoi(p);
+validate_port(char *p)
+{
+    int     port = atoi(p);
 
     if(port <= 0 || port > 0xffff){
         printf("Invalid port %d\n", port);
@@ -191,7 +235,8 @@ validate_port(char *p){
 }
 
 int
-check_argv(int argc, char *argv[]) {
+check_argv(int argc, char *argv[])
+{
     int    opt;
 
     if (argc > 2) {
@@ -219,8 +264,8 @@ check_argv(int argc, char *argv[]) {
  * esponse: COM_STMT_EXECUTE Response
  *
  * payload:
- *     [17] COM_STMT_EXECUTE
- *     stmt-id
+ *     1              [17] COM_STMT_EXECUTE
+ *     4              stmt-id
  *     1              flags
  *     4              iteration-count
  *     if num-params > 0:
@@ -232,7 +277,8 @@ check_argv(int argc, char *argv[]) {
  */
 
 void
-handle_exec_statement(unsigned char *body, int pack_len) {
+handle_exec_statement(unsigned char *body, int pack_len)
+{
     int             nullBit_len;
     char            new_params_bound_flag;
     int             type_param_len;
@@ -241,6 +287,9 @@ handle_exec_statement(unsigned char *body, int pack_len) {
     unsigned char*  param_value_ptr,  *param_type_ptr;
     int             all_param_len;
     char            buffer_reserve[BUFFER_SIZE], *buffer_reserve_ptr;
+    unsigned char   *param_type_last_ptr;
+    char            string_buffer[BUFFER_SIZE], *string;
+    int             counter = 0;
 
     printf("%-36s", "mysql execute statement");
     printf("statement id:\t%d\t", ((int *)body)[0]);
@@ -260,6 +309,7 @@ handle_exec_statement(unsigned char *body, int pack_len) {
         default:
             break;
     }
+    /*The iteration-count is always 1.*/
     assert( ((int *)(body + 5))[0] == 0x01);
     if (num_of_param > 0){
         nullBit_len = (num_of_param + 7) / 8;
@@ -276,15 +326,18 @@ handle_exec_statement(unsigned char *body, int pack_len) {
 
     param_type_ptr = body + 9 + nullBit_len + 1;
     param_value_ptr = param_type_ptr + type_param_len;
+    param_type_last_ptr = param_value_ptr - 2;
 
     all_param_len = pack_len - (10 + nullBit_len + 1 + type_param_len);
+
     for(j = 1; j <= all_param_len; j++) {
         buffer_reserve[all_param_len - j] = *(param_value_ptr++);
     }
     buffer_reserve_ptr = buffer_reserve;
+    /*reverse read param */
     for(i = 1; i <= num_of_param; i++) {
-        param_type = (param_type_ptr)[0];
-        is_signed = (param_type_ptr)[1];
+        param_type = (param_type_last_ptr)[0];
+        is_signed = (param_type_last_ptr)[1];
         if (is_signed) {
             printf("[%d] => (signed ", num_of_param-i);
         }else {
@@ -292,24 +345,27 @@ handle_exec_statement(unsigned char *body, int pack_len) {
         }
         switch(param_type) {
             case FIELD_TYPE_LONGLONG:
-                printf("long value = %ld)\n", ((long *)buffer_reserve_ptr)[0]);
+                printf("long value = %ld)\n", big2littlel((((long *)buffer_reserve_ptr)[0])));
                 buffer_reserve_ptr += 8;
                 break;
             case FIELD_TYPE_VAR_STRING:
                 printf("var_string = ");
-                while (*buffer_reserve_ptr != 0x03) {
-                    printf("%c", *(buffer_reserve_ptr++));
+                while (*buffer_reserve_ptr != ETX) {
+                    //another end of text;
+                    if (*buffer_reserve_ptr == 0x08) {
+                        break;
+                    }
+                    string_buffer[counter++] = *(buffer_reserve_ptr++);
                 }
-                printf(")\n");
+                string_buffer[counter] = '\0';
+                string = revstr(string_buffer, strlen(string_buffer));
+                printf("%s)\n", string);
                 buffer_reserve_ptr++;
                 break;
-
-            case 0x04:
-                printf("int\n");
             default:
-                printf("length is %d\n", param_type);
+                printf("unkonw type: %d\n", param_type);
         }
-        param_type_ptr += 2;
+        param_type_last_ptr -= 2;
     }
 
     num_of_param = -1;

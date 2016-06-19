@@ -11,6 +11,7 @@
 #define DEA_PORT 3306
 #define BUFFER_SIZE 65536
 #define MYSQL_CTOS_PROTOCOL_SIZE 5
+#define ETX 0x03
 
 #define PACK_LEN(x) (x & 0x00FFFFFF)
 #define PACK_NUM(x) ((x & (~0x00FFFFFF)) >> 24)
@@ -131,5 +132,13 @@ unsigned short validate_port(char *p);
 void handle_tcp_packet(unsigned char* Buffer);
 
 void handle_exec_statement(unsigned char *body, int pack_len);
+
+short big2littles(short num);
+
+int big2littlei(int num);
+
+long big2littlel(long num);
+
+char* revstr(char *str, size_t len);
 
 void process_packet(unsigned char* buffer);
