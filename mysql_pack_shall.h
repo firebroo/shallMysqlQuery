@@ -130,4 +130,6 @@ unsigned short validate_port(char *p);
 
 void handle_tcp_packet(unsigned char* Buffer);
 
+void handle_exec_statement(unsigned char *body, int pack_len);
+
 void process_packet(unsigned char* buffer);
