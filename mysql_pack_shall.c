@@ -120,7 +120,7 @@ handle_tcp_packet(unsigned char* buffer)
     iphdrlen = iph->ihl*4;
 
     tcph = (struct tcphdr*)(buffer + iphdrlen);
-    if (last_is_pare == 1 && ntohs(tcph->source) == 3306) {
+    if (last_is_pare == 1 && ntohs(tcph->source) == port) {
         handle_prepare_repose_pack(buffer + iphdrlen + tcph->doff*4);
         last_is_pare = 0;
     }
