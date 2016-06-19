@@ -1,5 +1,9 @@
 #include "mysql_pack_shall.h"
 
+/*
+ * mysql protocol
+ * read from http://dev.mysql.com/doc/internals/en/client-server-protocol.html
+ * */
 
 static short num_of_param = -1;
 
@@ -107,9 +111,10 @@ handle_tcp_packet(unsigned char* buffer)
     struct tcphdr   *tcph;
     struct iphdr    *iph;
     unsigned short  iphdrlen;
-    char            *body, mysql_body[BUFFER_SIZE];
+    unsigned char   *body, mysql_body[BUFFER_SIZE];
     int             packet, packet_len, packet_num;
     static char     last_is_pare = 0;
+    unsigned char   *body_protol_start_ptr;
 
     iph    = (struct iphdr*)buffer;
     iphdrlen = iph->ihl*4;
@@ -128,6 +133,8 @@ handle_tcp_packet(unsigned char* buffer)
             return;
         }
         memset(mysql_body,'\0', BUFFER_SIZE);
+
+        body_protol_start_ptr = buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE;
         //printf("%d\n", packet_len);
         switch (body[4]) {
             case COM_SLEEP:
@@ -138,25 +145,25 @@ handle_tcp_packet(unsigned char* buffer)
                 }
                 break;
             case COM_INIT_DB:
-                strncpy (mysql_body, buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len - 1);
+                strncpy (mysql_body, body_protol_start_ptr, packet_len - 1);
                 printf("%-36s%s\n","mysql select db:", mysql_body);
                 break;
             case COM_QUERY:
-                strncpy (mysql_body, buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len - 1);
+                strncpy (mysql_body, body_protol_start_ptr, packet_len - 1);
                 printf("%-36s%s\n", "mysql query:", mysql_body);
                 break;
             case COM_CREATE_DB:
-                strncpy (mysql_body, buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len - 1);
+                strncpy (mysql_body, body_protol_start_ptr, packet_len - 1);
                 printf("%-36s%s\n", "mysql create db:", mysql_body);
                 break;
             case COM_DROP_DB:
-                strncpy (mysql_body, buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len - 1);
+                strncpy (mysql_body, body_protol_start_ptr, packet_len - 1);
                 printf("%-36s%s","mysql delete db:", mysql_body);
                 break;
             case COM_STMT_PREPARE:
                 last_is_pare = 1;
                 printf("%-36s","mysql prepare statement:");
-                strncpy (mysql_body, buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len - 1);
+                strncpy (mysql_body, body_protol_start_ptr, packet_len - 1);
                 printf("%s\n", mysql_body);
                 break;
             case COM_FIELD_LIST:
@@ -195,14 +202,20 @@ handle_tcp_packet(unsigned char* buffer)
             case COM_REGISTER_SLAVE:
                 break;
             case COM_STMT_EXECUTE:
-                handle_exec_statement(buffer + iphdrlen + tcph->doff*4 + MYSQL_CTOS_PROTOCOL_SIZE, packet_len);
+                handle_exec_statement(body_protol_start_ptr, packet_len - 1);
                 break;
             case COM_STMT_SEND_LONG_DATA:
+                handle_long_data(body_protol_start_ptr, packet_len - 1);
                 break;
             case COM_STMT_CLOSE:
-                printf("%-36s\n", "mysql close statement");
+                printf("%-36sstatement id = %d\n",
+                        "mysql close statement:",
+                        ((int*)(body_protol_start_ptr))[0]);
                 break;
             case COM_STMT_RESET:
+                printf("%-36sstatement id = %d\n",
+                        "mysql reset statement:",
+                        ((int*)(body_protol_start_ptr))[0]);
                 break;
             case COM_SET_OPTION:
                 printf("%-36s\n", "mysql set option");
@@ -218,6 +231,32 @@ handle_tcp_packet(unsigned char* buffer)
                 break;
         }
     }
+}
+
+/*
+ * COM_STMT_SEND_LONG_DATA
+ *   direction: client -> server
+ *   response: none
+ *
+ *    payload:
+ *      1              [18] COM_STMT_SEND_LONG_DATA
+ *      4              statement-id
+ *      2              param-id
+ *      n              data
+ */
+void
+handle_long_data(unsigned char *body, int pack_len)
+{
+    int    i;
+    int    statement_id;
+    short  param_id;
+
+    statement_id = ((int*)body)[0];
+    param_id = ((short*)(body + 4))[0];
+    for (i = 0; i < pack_len - 6; i++) {
+        printf("%02x ", (body + 6)[i]);
+    }
+    printf("%-36s", "mysql send long data:");
 }
 
 unsigned short
@@ -291,8 +330,8 @@ handle_exec_statement(unsigned char *body, int pack_len)
     char            string_buffer[BUFFER_SIZE], *string;
     int             counter = 0;
 
-    printf("%-36s", "mysql execute statement");
-    printf("statement id:\t%d\t", ((int *)body)[0]);
+    printf("%-36s", "mysql execute statement:");
+    printf("statement id = %d\t", ((int *)body)[0]);
     switch (body[4]) {
         case CURSOR_TYPE_NO_CURSOR:
             printf("CURSOR_TYPE_NO_CURSOR\n");
@@ -328,7 +367,7 @@ handle_exec_statement(unsigned char *body, int pack_len)
     param_value_ptr = param_type_ptr + type_param_len;
     param_type_last_ptr = param_value_ptr - 2;
 
-    all_param_len = pack_len - (10 + nullBit_len + 1 + type_param_len);
+    all_param_len = pack_len - (9 + nullBit_len + 1 + type_param_len);
 
     for(j = 1; j <= all_param_len; j++) {
         buffer_reserve[all_param_len - j] = *(param_value_ptr++);
@@ -339,9 +378,9 @@ handle_exec_statement(unsigned char *body, int pack_len)
         param_type = (param_type_last_ptr)[0];
         is_signed = (param_type_last_ptr)[1];
         if (is_signed) {
-            printf("[%d] => (signed ", num_of_param-i);
+            printf("%-36s[%d] => (signed ", "",  num_of_param-i);
         }else {
-            printf("[%d] => (unsigned ", num_of_param-i);
+            printf("%-36s[%d] => (unsigned ", "",  num_of_param-i);
         }
         switch(param_type) {
             case FIELD_TYPE_LONGLONG:

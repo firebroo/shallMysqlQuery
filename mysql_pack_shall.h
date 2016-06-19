@@ -142,3 +142,5 @@ long big2littlel(long num);
 char* revstr(char *str, size_t len);
 
 void process_packet(unsigned char* buffer);
+
+void handle_long_data(unsigned char *body, int pack_len);
