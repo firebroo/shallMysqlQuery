@@ -385,9 +385,9 @@ handle_exec_statement(unsigned char *body, int pack_len)
         param_type = (param_type_ptr)[0];
         is_signed = (param_type_ptr)[1];
         if (is_signed) {
-            printf("%-36s[%d] => (signed ", "",  i);
+            printf("%-60s[%d] => (signed ", "",  i);
         }else {
-            printf("%-36s[%d] => (unsigned ", "",  i);
+            printf("%-60s[%d] => (unsigned ", "",  i);
         }
         switch(param_type) {
             case FIELD_TYPE_LONGLONG:
