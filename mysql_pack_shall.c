@@ -89,7 +89,6 @@ handle_prepare_repose_pack(unsigned char* buffer)
 
     num_of_fileds = ((short*)(buffer+9))[0];
     num_of_param = ((short*)(buffer+9))[1];
-
     /*
     printf("packet len:%d\n"
             "packet num: %d\n"
@@ -122,7 +121,6 @@ handle_tcp_packet(unsigned char* buffer)
     tcph = (struct tcphdr*)(buffer + iphdrlen);
     if (last_is_pare == 1 && ntohs(tcph->source) == port) {
         handle_prepare_repose_pack(buffer + iphdrlen + tcph->doff*4);
-        last_is_pare = 0;
     }
     if (ntohs (tcph->dest) == port && ntohs(tcph->source) != port) {
         body = buffer + iphdrlen + tcph->doff*4;
@@ -167,10 +165,10 @@ handle_tcp_packet(unsigned char* buffer)
                 break;
             case COM_STMT_PREPARE:
                 greate_print_time();
-                last_is_pare = 1;
                 printf("%-36s","mysql prepare statement:");
                 strncpy (mysql_body, body_protol_start_ptr, packet_len - 1);
                 printf("%s\n", mysql_body);
+                last_is_pare = 1;
                 break;
             case COM_FIELD_LIST:
                 break;
@@ -213,6 +211,7 @@ handle_tcp_packet(unsigned char* buffer)
             case COM_STMT_EXECUTE:
                 greate_print_time();
                 handle_exec_statement(body_protol_start_ptr, packet_len - 1);
+                last_is_pare = 0;
                 break;
             case COM_STMT_SEND_LONG_DATA:
                 greate_print_time();
