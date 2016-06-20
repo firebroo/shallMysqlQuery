@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
+#include <time.h>
 #include <netinet/tcp.h>
 #include <netinet/ip.h>
 #include <sys/socket.h>
@@ -144,3 +145,5 @@ char* revstr(char *str, size_t len);
 void process_packet(unsigned char* buffer);
 
 void handle_long_data(unsigned char *body, int pack_len);
+
+void greate_print_time(void);

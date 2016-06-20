@@ -141,26 +141,32 @@ handle_tcp_packet(unsigned char* buffer)
                 break;
             case COM_QUIT:
                 if (packet_len == 1 && packet_num == 0) {
+                    greate_print_time();
                     printf("%-36s\n","mysql close");
                 }
                 break;
             case COM_INIT_DB:
+                greate_print_time();
                 strncpy (mysql_body, body_protol_start_ptr, packet_len - 1);
                 printf("%-36s%s\n","mysql select db:", mysql_body);
                 break;
             case COM_QUERY:
+                greate_print_time();
                 strncpy (mysql_body, body_protol_start_ptr, packet_len - 1);
                 printf("%-36s%s\n", "mysql query:", mysql_body);
                 break;
             case COM_CREATE_DB:
+                greate_print_time();
                 strncpy (mysql_body, body_protol_start_ptr, packet_len - 1);
                 printf("%-36s%s\n", "mysql create db:", mysql_body);
                 break;
             case COM_DROP_DB:
+                greate_print_time();
                 strncpy (mysql_body, body_protol_start_ptr, packet_len - 1);
                 printf("%-36s%s","mysql delete db:", mysql_body);
                 break;
             case COM_STMT_PREPARE:
+                greate_print_time();
                 last_is_pare = 1;
                 printf("%-36s","mysql prepare statement:");
                 strncpy (mysql_body, body_protol_start_ptr, packet_len - 1);
@@ -175,6 +181,7 @@ handle_tcp_packet(unsigned char* buffer)
             case COM_STATISTICS:
                 break;
             case COM_PROCESS_INFO:
+                greate_print_time();
                 printf("%-36s\n", "mysql processlist");
                 break;
             case COM_CONNECT:
@@ -182,9 +189,11 @@ handle_tcp_packet(unsigned char* buffer)
             case COM_PROCESS_KILL:
                 break;
             case COM_DEBUG:
+                greate_print_time();
                 printf("%-36s\n", "mysql debug");
                 break;
             case COM_PING:
+                greate_print_time();
                 printf("%-36s\n", "mysql ping");
                 break;
             case COM_TIME:
@@ -202,22 +211,27 @@ handle_tcp_packet(unsigned char* buffer)
             case COM_REGISTER_SLAVE:
                 break;
             case COM_STMT_EXECUTE:
+                greate_print_time();
                 handle_exec_statement(body_protol_start_ptr, packet_len - 1);
                 break;
             case COM_STMT_SEND_LONG_DATA:
+                greate_print_time();
                 handle_long_data(body_protol_start_ptr, packet_len - 1);
                 break;
             case COM_STMT_CLOSE:
+                greate_print_time();
                 printf("%-36sstatement id = %d\n",
                         "mysql close statement:",
                         ((int*)(body_protol_start_ptr))[0]);
                 break;
             case COM_STMT_RESET:
+                greate_print_time();
                 printf("%-36sstatement id = %d\n",
                         "mysql reset statement:",
                         ((int*)(body_protol_start_ptr))[0]);
                 break;
             case COM_SET_OPTION:
+                greate_print_time();
                 printf("%-36smulti_statement(%s)\n",
                         "mysql set option: ",
                         ((short*)body_protol_start_ptr)[0]? "OFF": "ON");
@@ -327,10 +341,6 @@ handle_exec_statement(unsigned char *body, int pack_len)
     int             i, j;
     unsigned char*  param_value_ptr,  *param_type_ptr;
     int             all_param_len;
-    char            buffer_reserve[BUFFER_SIZE], *buffer_reserve_ptr;
-    unsigned char   *param_type_last_ptr;
-    char            string_buffer[BUFFER_SIZE], *string;
-    int             counter = 0;
 
     printf("%-36s", "mysql execute statement:");
     printf("statement id = %d\t", ((int *)body)[0]);
@@ -399,6 +409,23 @@ handle_exec_statement(unsigned char *body, int pack_len)
     }
 
     num_of_param = -1;
+}
+
+void 
+greate_print_time(void)
+{
+    time_t      timep;
+    struct tm   *p;
+
+    time(&timep);
+    p = gmtime(&timep);
+    printf("%d-%d-%d %02d:%02d:%02d\t", 
+                1900 + p->tm_year, 
+                1 + p->tm_mon, 
+                p->tm_mday,
+                p->tm_hour + 8, 
+                p->tm_min, 
+                p->tm_sec);
 }
 
 int
