@@ -1,15 +1,26 @@
+TARGET = mysql_pack_shall
+
+SRCS = mysql_pack_shall.c
+
+OBJS = $(SRCS:.c=.o)
+
+INSTALLDIR = /bin/
+
 CC = gcc
+CFLAGS = -g -O2
 
-all: mysql_pack_shall
-	@echo "All"
-
-mysql_pack_shall: mysql_pack_shall.o
-	@echo $@
-	$(CC) -o $@ $^
-
-mysql_pack_shall.o: mysql_pack_shall.c
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^
 
 install:
-	@sudo mv mysql_pack_shall /bin/
+	mv $(TARGET) $(INSTALLDIR)
+
 clean:
-	@rm -rf mysql_pack_shall *.o
+	rm -rf $(TARGET) $(OBJS)
+
+depclean:
+	sudo rm -rf $(TARGET) $(OBJS) $(INSTALLDIR)$(TARGET)
+
+
+$.o:%.c
+	$(CC) $(CFLAGS) -o $@ -c $<
