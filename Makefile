@@ -22,5 +22,5 @@ depclean:
 	sudo rm -rf $(TARGET) $(OBJS) $(INSTALLDIR)$(TARGET)
 
 
-$.o:%.c
+%.o:%.c
 	$(CC) $(CFLAGS) -o $@ -c $<
