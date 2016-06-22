@@ -5,7 +5,8 @@
  * read from http://dev.mysql.com/doc/internals/en/client-server-protocol.html
  * */
 
-static short num_of_param = -1;
+short           num_of_param = -1;
+unsigned short  port = DEA_PORT;
 
 void
 process_packet(unsigned char* buffer)
@@ -410,7 +411,7 @@ handle_exec_statement(unsigned char *body, int pack_len)
     num_of_param = -1;
 }
 
-void 
+void
 greate_print_time(void)
 {
     time_t      timep;
@@ -418,18 +419,19 @@ greate_print_time(void)
 
     time(&timep);
     p = gmtime(&timep);
-    printf("%d-%d-%d %02d:%02d:%02d\t", 
-                1900 + p->tm_year, 
-                1 + p->tm_mon, 
+    printf("%d-%d-%d %02d:%02d:%02d\t",
+                1900 + p->tm_year,
+                1 + p->tm_mon,
                 p->tm_mday,
-                p->tm_hour + 8, 
-                p->tm_min, 
+                p->tm_hour + 8,
+                p->tm_min,
                 p->tm_sec);
 }
 
 int
 main(int argc, char *argv[])
 {
+    int             sock_raw;
     int             data_size;
     unsigned int    saddr_size;
     struct sockaddr saddr;

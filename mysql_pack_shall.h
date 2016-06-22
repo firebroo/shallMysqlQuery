@@ -1,3 +1,6 @@
+#ifndef MYSQL_PACK_SHALL_H
+#define MYSQL_PACK_SHALL_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,17 +12,15 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#define DEA_PORT 3306
-#define BUFFER_SIZE 65536
-#define MYSQL_CTOS_PROTOCOL_SIZE 5
-#define ETX 0x03
+#define DEA_PORT                  3306
+#define BUFFER_SIZE               65536
+#define MYSQL_CTOS_PROTOCOL_SIZE  5
 
 #define PACK_LEN(x) (x & 0x00FFFFFF)
 #define PACK_NUM(x) ((x & (~0x00FFFFFF)) >> 24)
 
-int sock_raw;
-struct sockaddr_in source,dest;
-unsigned short port = DEA_PORT;
+extern short           num_of_param;
+extern unsigned short  port;
 
 enum enum_server_command
 {
@@ -147,3 +148,5 @@ void process_packet(unsigned char* buffer);
 void handle_long_data(unsigned char *body, int pack_len);
 
 void greate_print_time(void);
+
+#endif /* MYSQL_PACK_SHALL_H */
