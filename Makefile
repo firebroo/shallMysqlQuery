@@ -1,13 +1,13 @@
-TARGET = mysql_pack_shall
+TARGET = sniffer
 
-SRCS = mysql_pack_shall.c
+SRCS = common.c mysql_parse.c sniffer.c hashtable.c
 
 OBJS = $(SRCS:.c=.o)
 
 INSTALLDIR = /bin/
 
-CC = gcc
-CFLAGS = -g -O2
+CC = cc
+CFLAGS = -O2
 
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^

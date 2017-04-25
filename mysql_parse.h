@@ -1,60 +1,105 @@
-#ifndef MYSQL_PACK_SHALL_H
-#define MYSQL_PACK_SHALL_H
+#ifndef MYSQL_PARSE_H
+#define MYSQL_PARSE_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <assert.h>
-#include <time.h>
 #include <netinet/tcp.h>
 #include <netinet/ip.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#define DEA_PORT                  3306
-#define BUFFER_SIZE               65536
 #define MYSQL_CTOS_PROTOCOL_SIZE  5
 
 #define PACK_LEN(x) (x & 0x00FFFFFF)
 #define PACK_NUM(x) ((x & (~0x00FFFFFF)) >> 24)
+#define CSTRINGLEN(string) strlen(string)+1
+#define MAX(a, b) ((a) > (b)? (a): (b))
 
-extern short           num_of_param;
-extern unsigned short  port;
+#define CLIENT_LONG_PASSWORD	1	/* new more secure passwords */
+#define CLIENT_FOUND_ROWS	2	/* Found instead of affected rows */
+#define CLIENT_LONG_FLAG	4	/* Get all column flags */
+#define CLIENT_CONNECT_WITH_DB	8	/* One can specify db on connect */
+#define CLIENT_NO_SCHEMA	16	/* Don't allow database.table.column */
+#define CLIENT_COMPRESS		32	/* Can use compression protocol */
+#define CLIENT_ODBC		64	/* Odbc client */
+#define CLIENT_LOCAL_FILES	128	/* Can use LOAD DATA LOCAL */
+#define CLIENT_IGNORE_SPACE	256	/* Ignore spaces before '(' */
+#define CLIENT_PROTOCOL_41	512	/* New 4.1 protocol */
+#define CLIENT_INTERACTIVE	1024	/* This is an interactive client */
+#define CLIENT_SSL              2048	/* Switch to SSL after handshake */
+#define CLIENT_IGNORE_SIGPIPE   4096    /* IGNORE sigpipes */
+#define CLIENT_TRANSACTIONS	8192	/* Client knows about transactions */
+#define CLIENT_RESERVED         16384   /* Old flag for 4.1 protocol  */
+#define CLIENT_SECURE_CONNECTION 32768  /* New 4.1 authentication */
+#define CLIENT_MULTI_STATEMENTS (1UL << 16) /* Enable/disable multi-stmt support */
+#define CLIENT_MULTI_RESULTS    (1UL << 17) /* Enable/disable multi-results */
+#define CLIENT_PS_MULTI_RESULTS (1UL << 18) /* Multi-results in PS-protocol */
+
+#define CLIENT_PLUGIN_AUTH  (1UL << 19) /* Client supports plugin authentication */
+
+#define CLIENT_SSL_VERIFY_SERVER_CERT (1UL << 30)
+#define CLIENT_REMEMBER_OPTIONS (1UL << 31)
+
+
+
+//extern unsigned short  port;
+
+struct stmt_prepare_response {
+    char   status;
+    int    statement_id;
+    short  num_columns;
+    short  num_params;
+    char   reserved_1;
+    short  warning_count;
+} __attribute__((packed));
+
+struct handshake {
+    int    connection_id;
+    char   auth_plugin_data_part[8];
+    char   filler;
+    short  capability_flag_1;
+    //char   character_set;
+    //short  status_flags;
+    //short  capability_flags_2;
+    //char   auth_plugin_data_len;
+} __attribute__((packed));
 
 enum enum_server_command
 {
-    COM_SLEEP,
-    COM_QUIT,
+    COM_SLEEP,                 /*0*/
+    COM_QUIT,                  
     COM_INIT_DB,
     COM_QUERY,
     COM_FIELD_LIST,
-    COM_CREATE_DB,
+    COM_CREATE_DB,            /*5*/
     COM_DROP_DB,
     COM_REFRESH,
     COM_SHUTDOWN,
     COM_STATISTICS,
-    COM_PROCESS_INFO,
+    COM_PROCESS_INFO,        /*10*/
     COM_CONNECT,
     COM_PROCESS_KILL,
     COM_DEBUG,
     COM_PING,
-    COM_TIME,
+    COM_TIME,                /*15*/
     COM_DELAYED_INSERT,
     COM_CHANGE_USER,
     COM_BINLOG_DUMP,
     COM_TABLE_DUMP,
-    COM_CONNECT_OUT,
+    COM_CONNECT_OUT,        /*20*/
     COM_REGISTER_SLAVE,
     COM_STMT_PREPARE,
     COM_STMT_EXECUTE,
     COM_STMT_SEND_LONG_DATA,
-    COM_STMT_CLOSE,
+    COM_STMT_CLOSE,        /*25*/
     COM_STMT_RESET,
     COM_SET_OPTION,
     COM_STMT_FETCH,
     COM_DAEMON,
-    COM_END
+    COM_END               /*30*/
+};
+
+enum method {
+    RESQUEST,
+    RESPONSE
 };
 
 enum cursor_flag {
@@ -125,28 +170,8 @@ enum enum_field_types {
 #define FIELD_TYPE_GEOMETRY    MYSQL_TYPE_GEOMETRY
 #define FIELD_TYPE_BIT         MYSQL_TYPE_BIT
 
-void handle_exec_statement(unsigned char *body, int pack_len);
 
-int check_argv(int argc, char *argv[]);
+void hashtable_init(void);
+char* mysql_process_packet(unsigned char* buffer, int size);
 
-unsigned short validate_port(char *p);
-
-void handle_tcp_packet(unsigned char* Buffer);
-
-void handle_exec_statement(unsigned char *body, int pack_len);
-
-short big2littles(short num);
-
-int big2littlei(int num);
-
-long big2littlel(long num);
-
-char* revstr(char *str, size_t len);
-
-void process_packet(unsigned char* buffer);
-
-void handle_long_data(unsigned char *body, int pack_len);
-
-void greate_print_time(void);
-
-#endif /* MYSQL_PACK_SHALL_H */
+#endif /* MYSQL_PARSE */
