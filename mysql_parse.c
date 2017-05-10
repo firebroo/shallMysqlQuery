@@ -353,9 +353,9 @@ __handle_ok_packet__(unsigned char *buffer, char *data)
         *((char *)last_insert_id + i) = buffer[i];
     }
 
+    sprintf(data, "affected_rows: %ld, last_insert_id: %ld", *affected_rows, *last_insert_id);
     free(affected_rows);
     free(last_insert_id);
-    sprintf(data, "affected_rows: %ld, last_insert_id: %ld", *affected_rows, *last_insert_id);
 }
 
 /**
