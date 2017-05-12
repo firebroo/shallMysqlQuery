@@ -1,8 +1,11 @@
 #ifndef HASHTABLE_H
 #define HASHTABLE_H
 
-#include "common.h"
-#include "config.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
 
 #define HASH_TABLE_INIT_SIZE (1 << 8) 
 
@@ -26,14 +29,6 @@
 
 #define hashTable_max_size(hashtable) \
     ((hashtable)->hash_table_max_size)
-
-/* free current node hlist */
-#define free_hlist(hashnode) \
-    do { \
-        hashNode_for_each (hashnode) {   \
-            __free_hashnode__(hashnode); \
-        }                                \
-    } while(0)
 
 #define hashTable_expand(hashtable) \
     ((hashTable_max_size(hashtable)) <<= 1)

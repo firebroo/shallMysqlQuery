@@ -6,7 +6,19 @@ static inline void __hash_rehash__ (HashNode **newHashNode, \
         size_t pos, HashNode *pHead,  HashNode* pOldHead);
 static void __hash_table_rehash__ (HashTable *hashtable);
 static HashNode* __deep_clone_hashnode__ (HashNode* hashnode);
+static void __free_hlist__(HashNode *node);
 
+void
+__free_hlist__(HashNode *pHead)
+{
+    HashNode  *tmp;
+
+    while (pHead) {
+        tmp = pHead->pNext;
+        __free_hashnode__(pHead);
+        pHead = tmp;
+    }
+}
 
 /*if key is exists and type is STRING, free string's value memory*/
 inline void 
@@ -45,7 +57,7 @@ void
 __hash_table_rehash__ (HashTable *hashtable)
 {
     size_t     i, pos, hash_old_size;
-    HashNode   *pOldHead, **newHashNode;
+    HashNode   *pOldHead, **newHashNode, *tmp;
 
     hash_old_size = hashTable_max_size(hashtable);
     hashTable_expand(hashtable);
@@ -53,12 +65,13 @@ __hash_table_rehash__ (HashTable *hashtable)
         hashTable_max_size(hashtable));
     for (i = 0; i < hash_old_size; i++) {
         if ((pOldHead = (hashtable->hashnode)[i])) {
-            hashNode_for_each (pOldHead) {
-                HashNode *clonedHashnode = __deep_clone_hashnode__(pOldHead);
+            while (pOldHead) {
+                tmp = pOldHead->pNext;
                 pos = hash_pos (pOldHead->hash, hashtable);
-                __hash_rehash__ (newHashNode, pos, newHashNode[pos], clonedHashnode);
+                pOldHead->pNext = NULL;
+                __hash_rehash__ (newHashNode, pos, newHashNode[pos], pOldHead);
+                pOldHead = tmp;
             }
-            free_hlist (pOldHead);
         }
     }
     free (hashtable->hashnode);
@@ -395,18 +408,14 @@ hash_table_remove (HashTable *hashtable, const char* skey)
             }
             pLast = pHead;
         }
-        if (pRemove) {                      /* find node, but first node is not the want to remove hashnode. */
-            if (pLast) {
-                pLast->pNext = pRemove->pNext;
-            } else {
-                (hashtable->hashnode)[pos] = pRemove->pNext;
-            } 
-            __free_hashnode__ (pRemove);
-        } else {                            /* not find node. */
-            die ("key is not exist.");
+        if (pLast) {
+            pLast->pNext = pRemove->pNext;
+        } else {
+            hashtable->hashnode[pos] = pRemove->pNext;
         }
+        __free_hashnode__ (pRemove);
     } else {
-        die ("key is not exist.");
+        printf ("key is not exist.");
     }
 }
 
@@ -477,15 +486,10 @@ void
 hash_table_release (HashTable *hashtable)
 {
     size_t      i;
-    HashNode   *pHead, *pFree;
+    HashNode   *tmp;
 
     for (i = 0; i < hashtable->hash_table_max_size; i++) {
-        if ((pHead = (hashtable->hashnode)[i])) {
-            do {
-                pFree = pHead;
-                __free_hashnode__ (pFree);
-            } while ((pHead = pHead->pNext));
-        }
+        __free_hlist__((hashtable->hashnode)[i]);
     }
     free (hashtable->hashnode);
 }
