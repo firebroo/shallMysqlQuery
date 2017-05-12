@@ -408,14 +408,18 @@ hash_table_remove (HashTable *hashtable, const char* skey)
             }
             pLast = pHead;
         }
-        if (pLast) {
-            pLast->pNext = pRemove->pNext;
+        if (pRemove) {
+            if (pLast) {
+                pLast->pNext = pRemove->pNext;
+            } else {
+                hashtable->hashnode[pos] = pRemove->pNext;
+            }
+            __free_hashnode__ (pRemove);
         } else {
-            hashtable->hashnode[pos] = pRemove->pNext;
+            printf ("key is not exist.\n");
         }
-        __free_hashnode__ (pRemove);
     } else {
-        printf ("key is not exist.");
+        printf ("key is not exist.\n");
     }
 }
 
